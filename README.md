@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿# Smile-Survey
 # Survey Management System Documentation
 
@@ -325,3 +326,7 @@ The Survey Management System is a full-stack application that allows organizatio
    - Threshold-based notifications
 
 This documentation provides a comprehensive overview of the Survey Management System. For specific implementation details, refer to the source code comments and the API documentation sections.
+=======
+# Smile-Survey-clean
+cleaned this repo
+>>>>>>> dbdf37fd9775f7a8f7a6b71877b471a4f2549fa8
