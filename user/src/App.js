@@ -91,7 +91,63 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
   const [loginLoading, setLoginLoading] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   const [showAdminButton, setShowAdminButton] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+const [resetPasswordForm, setResetPasswordForm] = useState({
+  username: '',
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+});
+const [resetPasswordError, setResetPasswordError] = useState('');
+const [resetPasswordSuccess, setResetPasswordSuccess] = useState('');
+const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   
+
+const handleResetPassword = async (e) => {
+  e.preventDefault();
+  setResetPasswordLoading(true);
+  setResetPasswordError('');
+  setResetPasswordSuccess('');
+
+  try {
+    // Basic validation
+    if (!resetPasswordForm.username || !resetPasswordForm.currentPassword || 
+        !resetPasswordForm.newPassword || !resetPasswordForm.confirmPassword) {
+      throw new Error('All fields are required');
+    }
+
+    if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+      throw new Error('New passwords do not match');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/reset-password-unauthenticated`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: resetPasswordForm.username,
+        currentPassword: resetPasswordForm.currentPassword,
+        newPassword: resetPasswordForm.newPassword
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Password reset failed');
+    }
+
+    setResetPasswordSuccess('Password reset successfully! You can now login with your new password.');
+    setTimeout(() => {
+      setShowResetModal(false);
+      setShowAdminLogin(true);
+    }, 2000);
+  } catch (err) {
+    setResetPasswordError(err.message);
+  } finally {
+    setResetPasswordLoading(false);
+  }
+};
   const API_BASE_URL = getApiBaseUrl();
   
   // Function to read slug from text file
@@ -345,9 +401,6 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
       </div>
       
       <div className="space-y-2 text-sm">
-      <p>✨ Your feedback matters to us</p>
-      <p>🎯 Help us improve our services</p>
-      <p>💝 Thank you for your patience</p>
       </div>
       </div>
       
@@ -407,6 +460,124 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         >
         {loginLoading ? 'Logging in...' : 'Login'}
         </button>
+
+{showResetModal && (
+  <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-gray-800">Reset Password</h3>
+        <button 
+          onClick={() => setShowResetModal(false)}
+          className="text-gray-500 hover:text-gray-700"
+        >
+          ×
+        </button>
+      </div>
+      
+      {resetPasswordError && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+          {resetPasswordError}
+        </div>
+      )}
+      
+      {resetPasswordSuccess && (
+        <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md text-sm">
+          {resetPasswordSuccess}
+        </div>
+      )}
+      
+      <form onSubmit={handleResetPassword}>
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-1">Username</label>
+          <input
+            type="text"
+            value={resetPasswordForm.username}
+            onChange={(e) => setResetPasswordForm({
+              ...resetPasswordForm,
+              username: e.target.value
+            })}
+            className="w-full p-2 border rounded-md"
+            required
+          />
+        </div>
+        
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-1">Current Password</label>
+          <input
+            type="password"
+            value={resetPasswordForm.currentPassword}
+            onChange={(e) => setResetPasswordForm({
+              ...resetPasswordForm,
+              currentPassword: e.target.value
+            })}
+            className="w-full p-2 border rounded-md"
+            required
+          />
+        </div>
+        
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-1">New Password</label>
+          <input
+            type="password"
+            value={resetPasswordForm.newPassword}
+            onChange={(e) => setResetPasswordForm({
+              ...resetPasswordForm,
+              newPassword: e.target.value
+            })}
+            className="w-full p-2 border rounded-md"
+            required
+            minLength="6"
+          />
+        </div>
+        
+        <div className="mb-6">
+          <label className="block text-gray-700 text-sm font-medium mb-1">Confirm New Password</label>
+          <input
+            type="password"
+            value={resetPasswordForm.confirmPassword}
+            onChange={(e) => setResetPasswordForm({
+              ...resetPasswordForm,
+              confirmPassword: e.target.value
+            })}
+            className="w-full p-2 border rounded-md"
+            required
+          />
+        </div>
+        
+        <button
+          type="submit"
+          disabled={resetPasswordLoading}
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {resetPasswordLoading ? 'Resetting...' : 'Reset Password'}
+        </button>
+      </form>
+      
+      <div className="mt-4 text-center">
+        <button 
+          onClick={() => {
+            setShowResetModal(false);
+            setShowAdminLogin(true);
+          }}
+          className="text-sm text-blue-600 hover:underline"
+        >
+          Back to Login
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+<div className="mt-3 text-center">
+  <button 
+    onClick={() => {
+      setShowAdminLogin(false);
+      setShowResetModal(true);
+    }}
+    className="text-sm text-blue-600 hover:underline"
+  >
+    Forgot Password?
+  </button>
+</div>
         </form>
         </div>
       )}
@@ -632,7 +803,11 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
     };
     
     const API_BASE_URL = getApiBaseUrl();
-    
+    const [resetForm, setResetForm] = useState({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
     const loadDepartments = async () => {
       try {
         setLoading(true);
@@ -1073,7 +1248,18 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         >
         Admin Register
         </button>
+        
+        
       )}
+          <button
+      onClick={() => setActiveTab('password-reset')}
+      className={`px-4 py-2 rounded-md font-medium ${activeTab === 'password-reset'
+        ? 'bg-blue-100 text-blue-700'
+        : 'text-gray-600 hover:bg-gray-100'
+      }`}
+      >
+      Password Reset
+      </button>
       </div>
       
       {activeTab === 'departments' && userLevel === 1 && (
@@ -1513,6 +1699,102 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
           >
           {loading ? 'Registering...' : 'Register Admin'}
+          </button>
+          </form>
+          </div>
+        )}
+        {activeTab === 'password-reset' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold mb-4">Reset Password</h2>
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+            {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
+            {success}
+            </div>
+          )}
+          
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              setLoading(true);
+              setError('');
+              setSuccess('');
+              
+              const response = await fetch(`${API_BASE_URL}/admin/reset-password`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                  currentPassword: resetForm.currentPassword,
+                  newPassword: resetForm.newPassword
+                })
+              });
+              
+              if (response.ok) {
+                setResetForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setSuccess('Password changed successfully!');
+              } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Password reset failed');
+              }
+            } catch (err) {
+              setError(err.message);
+            } finally {
+              setLoading(false);
+            }
+          }}>
+          <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-2">
+          Current Password
+          </label>
+          <input
+          type="password"
+          value={resetForm.currentPassword}
+          onChange={(e) => setResetForm({...resetForm, currentPassword: e.target.value})}
+          className="w-full p-2 border rounded-md"
+          required
+          />
+          </div>
+          
+          <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-2">
+          New Password
+          </label>
+          <input
+          type="password"
+          value={resetForm.newPassword}
+          onChange={(e) => setResetForm({...resetForm, newPassword: e.target.value})}
+          className="w-full p-2 border rounded-md"
+          required
+          minLength="6"
+          />
+          </div>
+          
+          <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-medium mb-2">
+          Confirm New Password
+          </label>
+          <input
+          type="password"
+          value={resetForm.confirmPassword}
+          onChange={(e) => setResetForm({...resetForm, confirmPassword: e.target.value})}
+          className="w-full p-2 border rounded-md"
+          required
+          />
+          </div>
+          
+          <button
+          type="submit"
+          disabled={loading || resetForm.newPassword !== resetForm.confirmPassword}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          >
+          {loading ? 'Resetting...' : 'Reset Password'}
           </button>
           </form>
           </div>

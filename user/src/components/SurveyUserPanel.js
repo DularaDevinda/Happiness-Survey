@@ -338,7 +338,7 @@ const SurveyUserPanel = () => {
       </span>
       </div>
       </div>
-      
+      // need to change this path
       <p className="text-xs text-gray-400">
       The page will automatically refresh for the next person
       </p>

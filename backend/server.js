@@ -197,6 +197,7 @@ app.post('/api/admin/register', authenticateJWT(1), async (req, res) => {
 });
 
 // User login
+// Modify the login endpoint to check password expiry
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -224,6 +225,12 @@ app.post('/api/admin/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Check password expiry
+    const hasPasswordChangedAt = await checkColumnExists('Users', 'PasswordChangedAt');
+    const changeDate = user[hasPasswordChangedAt ? 'PasswordChangedAt' : 'CreatedAt'];
+    const daysSinceChange = Math.floor((new Date() - new Date(changeDate)) / (1000 * 60 * 60 * 24));
+    const passwordExpired = daysSinceChange >= 60;
+
     // Update last login
     await pool.request()
       .input('userId', sql.Int, user.UserID)
@@ -239,7 +246,9 @@ app.post('/api/admin/login', async (req, res) => {
     res.json({
       token,
       userLevel: user.UserLevel,
-      username: user.Username
+      username: user.Username,
+      passwordExpired,
+      daysSinceChange
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -380,6 +389,90 @@ app.get('/api/reports/history', async (req, res) => {
   }
 });
 
+// new endpoint to Express server
+app.post('/api/admin/reset-password', authenticateJWT(), async (req, res) => {
+  console.log('Password reset endpoint hit');
+  console.log('User from JWT:', req.user);
+  console.log('Request body:', req.body);
+  
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.UserID; // Note: Check if it's UserID or userId
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    const pool = await getPool();
+
+    // Get current password hash
+    const userResult = await pool.request()
+      .input('userId', sql.Int, userId)
+      .query('SELECT PasswordHash FROM Users WHERE UserID = @userId');
+
+    console.log('User lookup result:', userResult.recordset.length);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentHash = userResult.recordset[0].PasswordHash;
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, currentHash);
+    console.log('Password match:', isMatch);
+    
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+
+    // Check if PasswordChangedAt column exists
+    const hasPasswordChangedAt = await checkColumnExists('Users', 'PasswordChangedAt');
+    
+    let updateQuery = 'UPDATE Users SET PasswordHash = @passwordHash';
+    if (hasPasswordChangedAt) {
+      updateQuery += ', PasswordChangedAt = GETDATE()';
+    }
+    updateQuery += ' WHERE UserID = @userId';
+
+    // Update password
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .input('passwordHash', sql.NVarChar, newHash)
+      .query(updateQuery);
+
+    console.log('Password updated successfully for user:', userId);
+    res.json({ success: true, message: 'Password updated successfully' });
+    
+  } catch (err) {
+    console.error('Password reset error:', err);
+    res.status(500).json({ error: 'Internal server error: ' + err.message });
+  }
+});
+
+// Also, let's check your authenticateJWT middleware - there might be an issue there
+// Make sure it's properly setting req.user with the correct property name
+
+
+// Add a test endpoint to verify JWT is working
+app.get('/api/admin/test-auth', authenticateJWT(), (req, res) => {
+  res.json({ 
+    message: 'Auth working!', 
+    user: {
+      id: req.user.UserID,
+      username: req.user.Username,
+      level: req.user.UserLevel
+    }
+  });
+});
 // Export reports to Excel
 app.get('/api/reports/export', async (req, res) => {
   try {
@@ -1328,7 +1421,87 @@ app.get('/api/emoji-stats', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// Add these routes to your Express server (before app.listen)
 
+// Password reset endpoint
+app.post('/api/admin/reset-password', authenticateJWT(), async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.userId;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    const pool = await getPool();
+
+    // Get current password hash
+    const userResult = await pool.request()
+      .input('userId', sql.Int, userId)
+      .query('SELECT PasswordHash FROM Users WHERE UserID = @userId');
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentHash = userResult.recordset[0].PasswordHash;
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, currentHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .input('passwordHash', sql.NVarChar, newHash)
+      .query('UPDATE Users SET PasswordHash = @passwordHash WHERE UserID = @userId');
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Password reset error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check if password needs reset (expired)
+app.get('/api/admin/password-expired', authenticateJWT(), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const pool = await getPool();
+
+    // Get password change date (use CreatedAt if PasswordChangedAt doesn't exist)
+    const hasPasswordChangedAt = await checkColumnExists('Users', 'PasswordChangedAt');
+    
+    let query = `SELECT ${hasPasswordChangedAt ? 'PasswordChangedAt' : 'CreatedAt'} as changeDate 
+                 FROM Users WHERE UserID = @userId`;
+
+    const result = await pool.request()
+      .input('userId', sql.Int, userId)
+      .query(query);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const changeDate = new Date(result.recordset[0].changeDate);
+    const now = new Date();
+    const daysSinceChange = Math.floor((now - changeDate) / (1000 * 60 * 60 * 24));
+
+    res.json({ 
+      expired: daysSinceChange >= 60,
+      daysSinceChange
+    });
+  } catch (err) {
+    console.error('Password expiry check error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

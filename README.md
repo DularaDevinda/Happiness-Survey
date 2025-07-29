@@ -1,7 +1,7 @@
 <<<<<<< HEAD
 ﻿# Smile-Survey
 # Survey Management System Documentation
-
+ slug file path of all PCs - "C:\Slug\SlugUrl.txt"
 ## Table of Contents
 1. [System Overview](#system-overview)
 2. [Technical Architecture](#technical-architecture)
