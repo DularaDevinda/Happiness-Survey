@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle, AlertCircle, Loader2, RefreshCw, Lock, 
   PlusCircle, BarChart3, Users, History, Download, 
-  Calendar, Building, UserPlus, LogOut 
+  Calendar, Building, UserPlus, LogOut, Eye, EyeOff
 } from 'lucide-react';
 
 // Define getApiBaseUrl outside components so it can be reused
@@ -12,6 +12,32 @@ const getApiBaseUrl = () => {
     return 'http://localhost:5000/api';
   }
   return `http://${hostname}:5000/api`;
+};
+
+// Password Input Component with Toggle
+const PasswordInput = ({ value, onChange, placeholder, required = false, minLength, className = "w-full p-2 pr-10 border rounded-md" }) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        type={showPassword ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+        required={required}
+        minLength={minLength}
+      />
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+      >
+        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
 };
 
 // Main App Component
@@ -92,15 +118,15 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
   const [clickCount, setClickCount] = useState(0);
   const [showAdminButton, setShowAdminButton] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
-const [resetPasswordForm, setResetPasswordForm] = useState({
-  username: '',
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-});
-const [resetPasswordError, setResetPasswordError] = useState('');
-const [resetPasswordSuccess, setResetPasswordSuccess] = useState('');
-const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    username: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [resetPasswordError, setResetPasswordError] = useState('');
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState('');
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   
 
 const handleResetPassword = async (e) => {
@@ -444,13 +470,12 @@ const handleResetPassword = async (e) => {
         />
         </div>
         <div className="mb-3">
-        <input
-        type="password"
-        placeholder="Password"
-        value={loginForm.password}
-        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-        className="w-full p-2 border rounded-md text-sm"
-        required
+        <PasswordInput
+          value={loginForm.password}
+          onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+          placeholder="Password"
+          required={true}
+          className="w-full p-2 pr-10 border rounded-md text-sm"
         />
         </div>
         <button
@@ -503,44 +528,38 @@ const handleResetPassword = async (e) => {
         
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-medium mb-1">Current Password</label>
-          <input
-            type="password"
+          <PasswordInput
             value={resetPasswordForm.currentPassword}
             onChange={(e) => setResetPasswordForm({
               ...resetPasswordForm,
               currentPassword: e.target.value
             })}
-            className="w-full p-2 border rounded-md"
-            required
+            required={true}
           />
         </div>
         
         <div className="mb-4">
           <label className="block text-gray-700 text-sm font-medium mb-1">New Password</label>
-          <input
-            type="password"
+          <PasswordInput
             value={resetPasswordForm.newPassword}
             onChange={(e) => setResetPasswordForm({
               ...resetPasswordForm,
               newPassword: e.target.value
             })}
-            className="w-full p-2 border rounded-md"
-            required
+            required={true}
             minLength="6"
           />
         </div>
         
         <div className="mb-6">
           <label className="block text-gray-700 text-sm font-medium mb-1">Confirm New Password</label>
-          <input
-            type="password"
+          <PasswordInput
             value={resetPasswordForm.confirmPassword}
             onChange={(e) => setResetPasswordForm({
               ...resetPasswordForm,
               confirmPassword: e.target.value
             })}
-            className="w-full p-2 border rounded-md"
-            required
+            required={true}
           />
         </div>
         
@@ -667,15 +686,12 @@ const handleResetPassword = async (e) => {
       
       <div className="mb-6">
       <label className="block text-gray-700 text-sm font-medium mb-1">Password</label>
-      <input
-      type="password"
-      value={loginForm.password}
-      onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-      className="w-full p-2 border rounded-md"
-      required
+      <PasswordInput
+        value={loginForm.password}
+        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+        required={true}
       />
       </div>
-      
       <button
       type="submit"
       disabled={loginLoading}
@@ -1688,7 +1704,7 @@ const handleResetPassword = async (e) => {
           onChange={(e) => setRegisterForm({ ...registerForm, userLevel: parseInt(e.target.value) })}
           className="w-full p-2 border rounded-md"
           >
-          <option value={1}>Super Admin</option>
+          {/*<option value={1}>Super Admin</option>*/}
           <option value={2}>Admin</option>
           </select>
           </div>
