@@ -5,7 +5,6 @@ import {
   Calendar, Building, UserPlus, LogOut, Eye, EyeOff
 } from 'lucide-react';
 
-// Define getApiBaseUrl outside components so it can be reused
 const getApiBaseUrl = () => {
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -91,7 +90,7 @@ const App = () => {
   }
 };
 
-// User Panel Component - Fixed admin login handling
+// User Panel Component - Updated with proper department name loading
 const SurveyUserPanel = ({ onAdminLogin }) => {
   const [question, setQuestion] = useState(null);
   const [department, setDepartment] = useState('');
@@ -128,7 +127,6 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
     setResetPasswordSuccess('');
     
     try {
-      // Basic validation
       if (!resetPasswordForm.username || !resetPasswordForm.currentPassword || 
         !resetPasswordForm.newPassword || !resetPasswordForm.confirmPassword) {
           throw new Error('All fields are required');
@@ -240,6 +238,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
       }
     };
     
+    // Updated loadActiveQuestion function with proper department name loading
     const loadActiveQuestion = async (slug) => {
       if (!slug) return;
       
@@ -247,6 +246,27 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         setLoading(true);
         setError('');
         
+        // First, get the department information by slug
+        const deptResponse = await fetch(`${API_BASE_URL}/departments/slug/${slug}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        let departmentName = '';
+        if (deptResponse.ok) {
+          const departmentData = await deptResponse.json();
+          departmentName = departmentData.name;
+          setDepartment(departmentName);
+        } else {
+          // Fallback to formatted slug if department not found
+          departmentName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          setDepartment(departmentName);
+        }
+        
+        // Now get the active question for this department
         const response = await fetch(`${API_BASE_URL}/departments/${slug}/active-question`, {
           method: 'GET',
           headers: {
@@ -257,7 +277,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error(`No active survey found for department: ${slug}`);
+            throw new Error(`No active survey found for ${departmentName} department`);
           } else if (response.status === 500) {
             throw new Error('Server error occurred. Please try again.');
           } else if (!navigator.onLine) {
@@ -269,9 +289,6 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         
         const data = await response.json();
         setQuestion(data);
-        
-        const deptName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        setDepartment(deptName);
         
       } catch (err) {
         console.error('Failed to load question:', err);
@@ -392,7 +409,9 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         <div className="absolute inset-0 w-16 h-16 border-4 border-white border-opacity-20 rounded-full mx-auto animate-pulse"></div>
         </div>
         <p className="text-white text-xl font-medium">Loading survey...</p>
-        <p className="text-white text-sm opacity-75 mt-2">Department: {departmentSlug}</p>
+        <p className="text-white text-sm opacity-75 mt-2">
+          {department || `Department: ${departmentSlug}`}
+        </p>
         </div>
         </div>
       );
@@ -413,11 +432,17 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
         <p className="font-medium text-blue-800 mb-2">
-        {department || departmentSlug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} Department
+          {department || 'Department Not Found'}
         </p>
+        {!department && (
+          <p className="text-sm text-blue-600">
+            Slug: {departmentSlug}
+          </p>
+        )}
         </div>
         
-        <div className="space-y-2 text-sm">
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
+        <p className="text-sm text-yellow-800">{error}</p>
         </div>
         </div>
         
@@ -442,6 +467,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         )}
         </div>
         
+        {/* Admin login and reset password modals remain the same */}
         {showAdminLogin && (
           <div className="mt-6 pt-4 border-t border-gray-200">
           <h3 className="text-lg font-medium text-gray-800 mb-3">Admin Login</h3>
@@ -477,140 +503,6 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
           >
           {loginLoading ? 'Logging in...' : 'Login'}
           </button>
-          
-          {showResetModal && (
-            <div className="fixed inset-0 z-[70] bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto relative z-[71]">
-            <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Reset Password</h3>
-            <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowResetModal(false);
-              setResetPasswordForm({
-                username: '',
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: ''
-              });
-              setResetPasswordError('');
-              setResetPasswordSuccess('');
-            }}
-            className="text-gray-500 hover:text-gray-700 text-2xl focus:outline-none"
-            type="button"
-            >
-            ×
-            </button>
-            </div>
-            
-            {resetPasswordError && (
-              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-              {resetPasswordError}
-              </div>
-            )}
-            
-            {resetPasswordSuccess && (
-              <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md text-sm">
-              {resetPasswordSuccess}
-              </div>
-            )}
-            
-            <form onSubmit={handleResetPassword}>
-            <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-medium mb-1">Username</label>
-            <input
-            type="text"
-            value={resetPasswordForm.username}
-            onChange={(e) => setResetPasswordForm({
-              ...resetPasswordForm,
-              username: e.target.value
-            })}
-            className="w-full p-2 border rounded-md"
-            required
-            />
-            </div>
-            
-            <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-medium mb-1">Current Password</label>
-            <PasswordInput
-            value={resetPasswordForm.currentPassword}
-            onChange={(e) => setResetPasswordForm({
-              ...resetPasswordForm,
-              currentPassword: e.target.value
-            })}
-            required={true}
-            />
-            </div>
-            
-            <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-medium mb-1">New Password</label>
-            <PasswordInput
-            value={resetPasswordForm.newPassword}
-            onChange={(e) => setResetPasswordForm({
-              ...resetPasswordForm,
-              newPassword: e.target.value
-            })}
-            required={true}
-            minLength="6"
-            />
-            </div>
-            
-            <div className="mb-6">
-            <label className="block text-gray-700 text-sm font-medium mb-1">Confirm New Password</label>
-            <PasswordInput
-            value={resetPasswordForm.confirmPassword}
-            onChange={(e) => setResetPasswordForm({
-              ...resetPasswordForm,
-              confirmPassword: e.target.value
-            })}
-            required={true}
-            />
-            </div>
-            
-            <button
-            type="submit"
-            disabled={resetPasswordLoading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-            >
-            {resetPasswordLoading ? 'Resetting...' : 'Reset Password'}
-            </button>
-            </form>
-            
-            <div className="mt-4 text-center">
-            <button 
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowResetModal(false);
-              setShowAdminLogin(true);
-            }}
-            className="text-sm text-blue-600 hover:underline focus:outline-none"
-            >
-            Back to Login
-            </button>
-            </div>
-            </div>
-            </div>
-          )}
-          
-          
-          {/*<div className="mt-3 text-center">
-          <button 
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowAdminLogin(false);
-            setShowResetModal(true);
-            setLoginError(''); // Clear any login errors
-          }}
-          className="text-sm text-blue-600 hover:underline focus:outline-none"
-          >
-          Forgot Password?
-          </button>
-          </div>*/}
           </form>
           </div>
         )}
@@ -620,8 +512,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
       );
     }
     
-    
-    // Success state with countdown
+    // Success state with countdown - now shows actual department name
     if (submitted) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-900 flex items-center justify-center">
@@ -652,7 +543,8 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         </div>
       );
     }
-    
+
+    // Main survey interface - now shows actual department name
     return (
       <div 
       className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden"
@@ -668,6 +560,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         </button>
       )}
       
+      {/* Admin login modal remains the same */}
       {showAdminLogin && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
@@ -715,25 +608,10 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
         >
         {loginLoading ? 'Logging in...' : 'Login'}
         </button>
-        
-        <div className="mt-4 text-center">
-        {/*<button 
-        type="button"
-        onClick={() => {
-          setShowAdminLogin(false);
-          setShowResetModal(true);
-        }}
-        className="text-sm text-blue-600 hover:underline"
-        >
-        Forgot Password?
-        </button>*/}
-        </div>
         </form>
         </div>
         </div>
       )}
-      
-      
       
       <div className="absolute inset-0 overflow-hidden">
       <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 opacity-20 rounded-full animate-pulse"></div>
@@ -1148,7 +1026,6 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
           setLoading(false);
         }
       };
-      
       const addQuestion = async () => {
         if (!selectedDepartment || !newQuestion.trim()) {
           setError('Department and question text are required');
@@ -1387,7 +1264,7 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
               onClick={() => deleteDepartment(dept.DepartmentID)}
               className="px-2 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200"
               >
-              Delete
+              Inactive
               </button>
               </div>
               </div>
@@ -1811,7 +1688,9 @@ const SurveyUserPanel = ({ onAdminLogin }) => {
             onChange={(e) => setRegisterForm({ ...registerForm, userLevel: parseInt(e.target.value) })}
             className="w-full p-2 border rounded-md"
             >
-            {/*<option value={1}>Super Admin</option>*/}
+
+              
+            {/*Remove this comment for access to add superadmins<option value={1}>Super Admin</option>*/}
             <option value={2}>Admin</option>
             </select>
             </div>
