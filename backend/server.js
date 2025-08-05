@@ -14,6 +14,19 @@ app.use(express.json());
 // JWT Secret - should be in your .env file
 const JWT_SECRET = process.env.JWT_SECRET || '123';
 
+import { createClient } from '@libsql/client';
+import { NextResponse } from 'next/server';
+
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN
+});
+
+export const POST = async () => {
+  // Fetch data from SQLite
+  const result = await client.execute("CREATE TABLE todos (description);");
+};
+
 function getDatabaseConfig() {
   const baseConfig = {
     server: process.env.DB_SERVER || 'DCL-ICT-007',

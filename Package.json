@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "concurrently": "^7.6.0"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.10"
   }
 }
