@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3306;
 app.use(cors());
 app.use(express.json());
 // JWT Secret - should be in your .env file
@@ -29,8 +29,8 @@ export const POST = async () => {
 
 function getDatabaseConfig() {
   const baseConfig = {
-    server: process.env.DB_SERVER || 'DCL-ICT-007',
-    database: process.env.DB_NAME || 'SurveyManagement',
+    server: process.env.DB_SERVER || 'localhost',
+    database: process.env.DB_NAME || 'btkbkxaqbe6ftry2noaa',
     options: {
       encrypt: false,
       trustServerCertificate: true,
@@ -57,7 +57,7 @@ function getDatabaseConfig() {
   
   console.log('Trying connection string approach for Windows Authentication');
   return {
-    connectionString: `Server=${process.env.DB_SERVER || 'DCL-ICT-007'};Database=${process.env.DB_NAME || 'SurveyManagement'};Trusted_Connection=true;TrustServerCertificate=true;ConnectTimeout=30;`,
+    connectionString: `Server=${process.env.DB_SERVER || 'localhost'};Database=${process.env.DB_NAME || 'btkbkxaqbe6ftry2noaa'};Trusted_Connection=true;TrustServerCertificate=true;ConnectTimeout=30;`,
     options: {
       encrypt: false,
       trustServerCertificate: true,
