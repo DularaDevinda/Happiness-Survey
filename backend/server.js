@@ -16,6 +16,8 @@ const JWT_SECRET = process.env.JWT_SECRET || '123';
 
 import { createClient } from '@libsql/client';
 import { NextResponse } from 'next/server';
+const mysql = require('mysql2/promise');
+
 
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL,
@@ -28,77 +30,29 @@ export const POST = async () => {
 };
 
 function getDatabaseConfig() {
-  const baseConfig = {
-    server: process.env.DB_SERVER || 'localhost',
-    database: process.env.DB_NAME || 'btkbkxaqbe6ftry2noaa',
-    options: {
-      encrypt: false,
-      trustServerCertificate: true,
-      enableArithAbort: true,
-      connectTimeout: 30000,
-      requestTimeout: 30000,
-      useUTC: false
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
-  };
-  
-  if (process.env.DB_USER && process.env.DB_PASSWORD) {
-    console.log('Using SQL Server Authentication');
-    return {
-      ...baseConfig,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD
-    };
-  }
-  
-  console.log('Trying connection string approach for Windows Authentication');
   return {
-    connectionString: `Server=${process.env.DB_SERVER || 'localhost'};Database=${process.env.DB_NAME || 'btkbkxaqbe6ftry2noaa'};Trusted_Connection=true;TrustServerCertificate=true;ConnectTimeout=30;`,
-    options: {
-      encrypt: false,
-      trustServerCertificate: true,
-      enableArithAbort: true,
-      useUTC: false
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
+    host: process.env.DB_SERVER,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
   };
 }
-
-const dbConfig = getDatabaseConfig();
-let poolPromise;
+const mysql = require('mysql2/promise');
 
 async function initializeDatabase() {
   try {
-    console.log('Attempting to connect to database...');
-    console.log('Server:', dbConfig.server || 'Connection string used');
-    console.log('Database:', dbConfig.database || 'From connection string');
+    console.log('Attempting to connect to MySQL database...');
+    const pool = mysql.createPool(getDatabaseConfig());
     
-    poolPromise = new sql.ConnectionPool(dbConfig);
+    // Test the connection
+    const [rows] = await pool.query('SELECT 1 as test');
+    console.log('Database test query successful:', rows);
     
-    poolPromise.on('connect', () => {
-      console.log('Database connection established');
-    });
-    
-    poolPromise.on('error', (err) => {
-      console.error('Database connection error:', err);
-    });
-    
-    await poolPromise.connect();
-    console.log('Connected to SQL Server successfully');
-    
-    const request = poolPromise.request();
-    const result = await request.query('SELECT 1 as test');
-    console.log('Database test query successful:', result.recordset);
-    
-    return poolPromise;
+    return pool;
   } catch (err) {
     console.error('Database connection failed:', err);
     throw err;
