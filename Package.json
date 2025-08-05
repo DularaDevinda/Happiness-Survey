@@ -1,21 +1,14 @@
 {
-  "name": "smile-survey",
+  "name": "smile-survey-frontend",
   "version": "1.0.0",
-  "description": "Smile Survey Application",
   "scripts": {
-    "install:all": "cd backend && npm install && cd ../admin && npm install && cd ../user && npm install",
-    "dev:backend": "cd backend && npm start",
-    "dev:admin": "cd admin && npm start",
-    "dev:user": "cd user && npm start",
-    "build:admin": "cd admin && npm run build",
-    "build:user": "cd user && npm run build",
-    "start": "concurrently \"npm run dev:backend\" \"npm run dev:admin\" \"npm run dev:user\""
-  },
-  "devDependencies": {
-    "concurrently": "^7.6.0"
+    "dev": "react-scripts start",
+    "build": "react-scripts build",
+    "start": "react-scripts start"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.10",
-    "mysql2": "^3.14.3"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
   }
 }
